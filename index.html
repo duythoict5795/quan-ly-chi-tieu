@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý Chi Tiêu</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f4f4f9; }
+        .card { background: white; padding: 15px; border-radius: 10px; shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        input, select, button { width: 100%; padding: 12px; margin: 10px 0; border-radius: 5px; border: 1px solid #ddd; box-sizing: border-box; }
+        button { background: #28a745; color: white; border: none; font-weight: bold; }
+        ul { list-style: none; padding: 0; }
+        li { background: white; margin: 5px 0; padding: 10px; border-radius: 5px; display: flex; justify-content: space-between; }
+    </style>
+</head>
+<body>
+
+    <h2>Ví Của Tôi</h2>
+    <div class="card">
+        <input type="number" id="amount" placeholder="Số tiền (đ)">
+        <input type="text" id="note" placeholder="Ghi chú (vd: Ăn sáng)">
+        <button onclick="saveData()">Lưu Chi Tiêu</button>
+    </div>
+
+    <h3>Lịch sử</h3>
+    <ul id="history"></ul>
+
+    <script>
+        function saveData() {
+            const amount = document.getElementById('amount').value;
+            const note = document.getElementById('note').value;
+            if(!amount) return;
+
+            const item = { amount, note, date: new Date().toLocaleDateString() };
+            let data = JSON.parse(localStorage.getItem('expenses') || '[]');
+            data.push(item);
+            localStorage.setItem('expenses', JSON.stringify(data));
+            render();
+        }
+
+        function render() {
+            const list = document.getElementById('history');
+            const data = JSON.parse(localStorage.getItem('expenses') || '[]');
+            list.innerHTML = data.map(i => `<li><span>${i.note}</span> <b>-${i.amount}đ</b></li>`).join('');
+        }
+        render();
+    </script>
+</body>
+</html>
