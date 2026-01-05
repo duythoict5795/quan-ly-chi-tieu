@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DT bank</title>
-   <link rel="icon" type="image/x-icon" href="https://share.google/S0czOiMGPQAuaHT0O">
+    <title>Quản Lý Thu Chi</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -120,8 +119,13 @@
                     <h3 class="font-bold text-slate-800">Báo cáo chi tiêu</h3>
                     <input type="month" id="analysisMonthPicker" class="text-sm bg-slate-50 border-none rounded-lg p-1 px-2 focus:ring-indigo-500" onchange="updateAnalysis()">
                 </div>
-                <div class="chart-container h-64 mb-6">
+                <div class="relative chart-container h-64 mb-6">
                     <canvas id="financeChart"></canvas>
+                    <!-- Center Text Container -->
+                    <div id="chartCenterText" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase">Tổng chi</span>
+                        <span id="chartTotalValue" class="text-sm font-bold text-slate-800">0 ₫</span>
+                    </div>
                 </div>
                 <div id="analysisEmptyState" class="hidden text-center py-10 text-slate-400 italic">Không có dữ liệu chi tiêu trong tháng này.</div>
                 <div id="analysisDetails" class="space-y-3 pt-4 border-t border-slate-50">
@@ -170,7 +174,7 @@
                         </div>
                     </button>
                 </div>
-                <p class="mt-8 text-center text-xs text-slate-400 italic">Phiên bản v2.4 - Monthly Income Focus</p>
+                <p class="mt-8 text-center text-xs text-slate-400 italic">Phiên bản v2.6 - UI Enhancement</p>
             </div>
         </section>
 
@@ -306,11 +310,16 @@
                             } else if (f.length === 10 && f.includes('-')) dStr = f;
                         }
                         if (dStr.length !== 10) continue;
+                        
+                        const catFromSheet = c[2] && c[2].v ? String(c[2].v).trim() : 'Khác';
+                        const noteFromSheet = c[4] && c[4].v ? String(c[4].v).trim() : '';
+
                         temp.push({
-                            id: `sheet-${i}`, type: (String(c[1].v).toLowerCase().trim() === 'thu' ? 'income' : 'expense'),
+                            id: `sheet-${i}`, 
+                            type: (String(c[1].v).toLowerCase().trim() === 'thu' ? 'income' : 'expense'),
                             amount: parseFloat(c[3].v),
-                            category: (c[4] && c[4].v ? String(c[4].v) : (c[2] && c[2].v ? String(c[2].v) : 'Khác')).trim(),
-                            predefinedCategory: c[2] && c[2].v ? String(c[2].v).trim() : 'Khác',
+                            category: catFromSheet,
+                            description: noteFromSheet,
                             date: dStr
                         });
                     }
@@ -333,16 +342,14 @@
             
             document.getElementById('currentMonthDisplay').textContent = `Tháng ${curM}, ${curY}`;
 
-            let tBalance = 0; // Số dư tổng (không đổi)
-            let curMIncome = 0; // Thu tháng này (MỚI)
-            let curMExpense = 0; // Chi tháng này
+            let tBalance = 0; 
+            let curMIncome = 0; 
+            let curMExpense = 0; 
             
             allTransactions.forEach(tx => {
-                // Tính số dư (Tất cả dữ liệu từ trước tới nay)
                 if (tx.type === 'income') tBalance += tx.amount;
                 else tBalance -= tx.amount;
 
-                // Tính thu/chi chỉ cho tháng hiện tại
                 if (tx.date.startsWith(curMonthKey)) {
                     if (tx.type === 'income') curMIncome += tx.amount;
                     else curMExpense += tx.amount;
@@ -358,13 +365,19 @@
             if (document.getElementById('tab-history').classList.contains('active')) renderHistory();
         }
 
+        // Updated helper function for title display
+        function getTransactionTitle(tx) {
+            const cat = tx.category || 'Khác';
+            const note = tx.description ? tx.description.trim() : '';
+            return note ? `${cat} - ${note}` : cat;
+        }
+
         function renderHomeHistory() {
             const list = document.getElementById('homeHistoryList');
             const now = new Date();
             const todayStr = now.toISOString().split('T')[0];
             const curMonthStr = todayStr.substring(0, 7);
             
-            // Chỉ lấy giao dịch tháng hiện tại cho Home
             const monthTxs = allTransactions.filter(tx => tx.date.startsWith(curMonthStr));
             const sorted = [...monthTxs].sort((a, b) => b.date.localeCompare(a.date));
 
@@ -384,17 +397,17 @@
                             <div class="w-8 h-8 rounded-lg flex items-center justify-center ${tx.type === 'income' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}">
                                 <span class="text-[9px] font-bold uppercase">${tx.type === 'income' ? 'THU' : 'CHI'}</span>
                             </div>
-                            <div>
-                                <p class="font-bold text-slate-800 text-xs">${tx.category}</p>
+                            <div class="max-w-[150px]">
+                                <p class="font-bold text-slate-800 text-xs truncate">${getTransactionTitle(tx)}</p>
                                 <p class="text-[9px] text-slate-400 font-medium">Hôm nay</p>
                             </div>
                         </div>
-                        <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-2">
                             <span class="font-bold text-sm ${tx.type === 'income' ? 'text-emerald-600' : 'text-slate-800'}">
                                 ${tx.type === 'income' ? '+' : ''}${formatCurrency(tx.amount).replace('₫', '').trim()}
                             </span>
                             ${tx.id.startsWith('local-') ? `
-                                <button onclick="openDeleteModal('${tx.id}')" class="text-slate-300 active:text-red-500 ml-1">
+                                <button onclick="openDeleteModal('${tx.id}')" class="text-slate-300 active:text-red-500">
                                     <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
                                 </button>` : ''}
                         </div>
@@ -430,12 +443,18 @@
             }
             const [y, m] = picker.value.split('-');
             const totals = {'Ăn Uống': 0, 'Chi Hàng Tháng': 0, 'Đưa Vợ': 0, 'Khác': 0};
+            let totalExpense = 0;
+
             allTransactions.filter(tx => tx.type === 'expense' && tx.date.startsWith(`${y}-${m}`)).forEach(tx => {
                 let cat = 'Khác';
-                if (['Ăn Sáng', 'Ăn Trưa', 'Ăn Chiều', 'Ăn Tối', 'Ăn Vặt'].includes(tx.predefinedCategory)) cat = 'Ăn Uống';
-                else if (['Chi Hàng Tháng', 'Đưa Vợ'].includes(tx.predefinedCategory)) cat = tx.predefinedCategory;
+                if (['Ăn Sáng', 'Ăn Trưa', 'Ăn Chiều', 'Ăn Tối', 'Ăn Vặt'].includes(tx.category)) cat = 'Ăn Uống';
+                else if (['Chi Hàng Tháng', 'Đưa Vợ'].includes(tx.category)) cat = tx.category;
                 totals[cat] += tx.amount;
+                totalExpense += tx.amount;
             });
+
+            // Update Center Text in Chart
+            document.getElementById('chartTotalValue').textContent = formatCurrency(totalExpense);
 
             const labels = Object.keys(totals).filter(k => totals[k] > 0);
             const data = labels.map(k => totals[k]);
@@ -443,12 +462,14 @@
             if (data.length === 0) {
                 document.getElementById('analysisEmptyState').classList.remove('hidden');
                 document.getElementById('financeChart').classList.add('hidden');
+                document.getElementById('chartCenterText').classList.add('hidden');
                 document.getElementById('analysisDetails').classList.add('hidden');
                 return;
             }
 
             document.getElementById('analysisEmptyState').classList.add('hidden');
             document.getElementById('financeChart').classList.remove('hidden');
+            document.getElementById('chartCenterText').classList.remove('hidden');
             document.getElementById('analysisDetails').classList.remove('hidden');
 
             const summaryList = document.getElementById('categorySummaryList');
@@ -471,7 +492,13 @@
             financeChartInstance = new Chart(document.getElementById('financeChart'), {
                 type: 'doughnut',
                 data: { labels, datasets: [{ data, backgroundColor: COLORS, borderWidth: 0 }] },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, cutout: '70%' }
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    plugins: { legend: { display: false } }, 
+                    cutout: '75%', 
+                    elements: { arc: { roundedCornersForced: true } }
+                }
             });
         }
 
@@ -495,14 +522,14 @@
                         <div class="w-10 h-10 rounded-full flex items-center justify-center ${tx.type === 'income' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}">
                             ${tx.type === 'income' ? '↑' : '↓'}
                         </div>
-                        <div>
-                            <p class="font-bold text-slate-800 text-sm">${tx.category}</p>
+                        <div class="max-w-[180px]">
+                            <p class="font-bold text-slate-800 text-sm truncate">${getTransactionTitle(tx)}</p>
                             <p class="text-[10px] text-slate-400 font-medium">${tx.type === 'income' ? 'Thu nhập' : 'Chi tiêu'}</p>
                         </div>
                     </div>
-                    <div class="text-right flex items-center gap-3">
+                    <div class="text-right flex items-center gap-2">
                         <span class="font-bold ${tx.type === 'income' ? 'text-emerald-600' : 'text-slate-800'}">${tx.type === 'income' ? '+' : ''}${formatCurrency(tx.amount).replace('₫', '').trim()}</span>
-                        ${tx.id.startsWith('local-') ? `<button onclick="openDeleteModal('${tx.id}')" class="text-slate-300">🗑</button>` : ''}
+                        ${tx.id.startsWith('local-') ? `<button onclick="openDeleteModal('${tx.id}')" class="text-slate-300 ml-1">🗑</button>` : ''}
                     </div>
                 `;
                 list.appendChild(item);
@@ -547,10 +574,17 @@
             const amount = parseFloat(document.getElementById('amountInput').value);
             const type = document.querySelector('input[name="type"]:checked').value;
             const cat = document.getElementById('catInput').value;
-            const custom = document.getElementById('customDescriptionInput').value.trim();
+            const description = document.getElementById('customDescriptionInput').value.trim();
             const date = document.getElementById('dateInput').value;
             
-            localTransactions.push({ id: `local-${Date.now()}`, type, amount, category: custom || cat, predefinedCategory: cat, date });
+            localTransactions.push({ 
+                id: `local-${Date.now()}`, 
+                type, 
+                amount, 
+                category: cat, 
+                description: description, 
+                date 
+            });
             localStorage.setItem(STORAGE_KEY, JSON.stringify(localTransactions));
             document.getElementById('amountInput').value = ""; 
             document.getElementById('customDescriptionInput').value = "";
@@ -568,5 +602,3 @@
     </script>
 </body>
 </html>
-
-
