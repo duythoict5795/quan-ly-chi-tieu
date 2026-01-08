@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DT Bank</title>
+    <title>Quản Lý Thu Chi Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -18,6 +18,12 @@
         .collapse-content.active { display: block; }
         .rotate-icon { transition: transform 0.3s; }
         .rotate-icon.active { transform: rotate(180deg); }
+        .search-focus:focus-within {
+            ring: 2px;
+            ring-color: #4f46e5;
+            background-color: white;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
     </style>
 </head>
 <body>
@@ -63,7 +69,8 @@
 
                     <div>
                         <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Số tiền (₫)</label>
-                        <input type="number" id="amountInput" inputmode="numeric" placeholder="0" class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 font-bold text-xl" required>
+                        <input type="text" id="amountDisplayInput" inputmode="numeric" placeholder="0" class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 font-bold text-xl" oninput="formatCurrencyInput(this)" required>
+                        <input type="hidden" id="amountInput">
                     </div>
 
                     <div class="grid grid-cols-2 gap-3">
@@ -73,7 +80,7 @@
                         </div>
                         <div>
                             <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Ghi chú</label>
-                            <input type="text" id="noteInput" placeholder="..." class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500">
+                            <input type="text" id="noteInput" placeholder="" class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500">
                         </div>
                     </div>
 
@@ -110,8 +117,19 @@
         </section>
 
         <!-- TAB 3: LỊCH SỬ -->
-        <section id="tab-history" class="tab-content">
+        <section id="tab-history" class="tab-content space-y-4">
+            <div class="sticky top-[60px] z-30 bg-[#f8fafc] py-2">
+                <div class="relative flex items-center bg-white rounded-2xl shadow-sm border border-slate-100 px-4 search-focus transition-all duration-300">
+                    <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    <input type="text" id="searchInput" placeholder="Tìm kiếm giao dịch..." class="w-full bg-transparent border-none py-3 px-3 text-sm focus:ring-0" oninput="handleSearch()">
+                    <button id="clearSearchBtn" class="hidden text-slate-300 hover:text-slate-500" onclick="clearSearch()">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
+                    </button>
+                </div>
+            </div>
+
             <div id="historyTree" class="space-y-3"></div>
+            <div id="searchResults" class="hidden space-y-3"></div>
         </section>
 
         <!-- TAB 4: CÀI ĐẶT -->
@@ -156,7 +174,7 @@
                 <span class="text-[9px] font-bold uppercase">History</span>
             </button>
             <button onclick="switchTab('settings', 'Cài Đặt')" class="nav-item flex flex-col items-center gap-1 w-full" id="btn-settings">
-                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
                 <span class="text-[9px] font-bold uppercase">Menu</span>
             </button>
         </div>
@@ -202,6 +220,25 @@
             return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
         }
 
+        function formatNumber(num) {
+            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        }
+
+        function formatCurrencyInput(input) {
+            // Loại bỏ tất cả ký tự không phải số
+            let value = input.value.replace(/\D/g, "");
+            
+            // Lưu giá trị thực vào hidden input
+            document.getElementById('amountInput').value = value;
+            
+            // Định dạng hiển thị với dấu chấm
+            if (value === "") {
+                input.value = "";
+            } else {
+                input.value = formatNumber(value);
+            }
+        }
+
         function switchTab(tabId, title) {
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -209,7 +246,10 @@
             document.getElementById(`btn-${tabId}`).classList.add('active');
             document.getElementById('pageTitle').textContent = title;
             if (tabId === 'analysis') updateAnalysis();
-            if (tabId === 'history') renderHistoryTree();
+            if (tabId === 'history') {
+                clearSearch();
+                renderHistoryTree();
+            }
             if (tabId === 'settings') renderSettings();
             window.scrollTo(0, 0);
         }
@@ -239,6 +279,72 @@
 
             renderHomeRecent(curMonthStr);
             updateCategorySelect();
+        }
+
+        function handleSearch() {
+            const input = document.getElementById('searchInput');
+            const clearBtn = document.getElementById('clearSearchBtn');
+            const tree = document.getElementById('historyTree');
+            const resultsDiv = document.getElementById('searchResults');
+            const query = input.value.trim().toLowerCase();
+
+            if (query === '') {
+                clearBtn.classList.add('hidden');
+                tree.classList.remove('hidden');
+                resultsDiv.classList.add('hidden');
+                return;
+            }
+
+            clearBtn.classList.remove('hidden');
+            tree.classList.add('hidden');
+            resultsDiv.classList.remove('hidden');
+
+            const filtered = state.transactions.filter(t => 
+                (t.note && t.note.toLowerCase().includes(query)) || 
+                (t.category && t.category.toLowerCase().includes(query))
+            ).sort((a,b) => b.date.localeCompare(a.date));
+
+            if (filtered.length === 0) {
+                resultsDiv.innerHTML = `
+                    <div class="bg-white rounded-2xl p-8 text-center border border-slate-100">
+                        <p class="text-slate-400 text-sm italic">Không tìm thấy kết quả cho "${query}"</p>
+                    </div>`;
+                return;
+            }
+
+            resultsDiv.innerHTML = `
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Kết quả tìm kiếm (${filtered.length})</p>
+                <div class="space-y-3">
+                    ${filtered.map(t => `
+                        <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-50 flex items-center justify-between">
+                            <div class="flex items-center gap-4">
+                                <div class="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-[9px] ${t.type === 'income' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}">
+                                    ${t.type === 'income' ? 'THU' : 'CHI'}
+                                </div>
+                                <div>
+                                    <p class="font-bold text-slate-800 text-xs">${t.note || 'Không có ghi chú'}</p>
+                                    <div class="flex items-center gap-2 mt-0.5">
+                                        <span class="text-[9px] font-bold text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded uppercase">${t.category}</span>
+                                        <span class="text-[9px] text-slate-400 font-medium">${t.date.split('-').reverse().join('/')}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <p class="font-bold text-sm ${t.type === 'income' ? 'text-emerald-600' : 'text-slate-800'}">
+                                    ${t.type === 'income' ? '+' : ''}${formatVND(t.amount)}
+                                </p>
+                                <button onclick="deleteTransaction('${t.id}')" class="text-slate-200 hover:text-red-500 transition-colors">
+                                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7a2 2 0 01-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>`;
+        }
+
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            handleSearch();
         }
 
         function renderHomeRecent(monthStr) {
@@ -405,8 +511,10 @@
                 { label: 'Xóa', class: 'flex-1 py-3 bg-red-600 text-white font-bold rounded-xl', onClick: () => {
                     state.transactions = state.transactions.filter(t => t.id !== id);
                     saveState();
-                    // Cập nhật lại view hiện tại
-                    if(document.getElementById('tab-history').classList.contains('active')) renderHistoryTree();
+                    if(document.getElementById('tab-history').classList.contains('active')) {
+                        handleSearch();
+                        renderHistoryTree();
+                    }
                     closeDialog();
                 }}
             ]);
@@ -515,13 +623,23 @@
 
         document.getElementById('transactionForm').addEventListener('submit', (e) => {
             e.preventDefault();
-            const amount = parseFloat(document.getElementById('amountInput').value);
+            const rawAmount = document.getElementById('amountInput').value;
+            const amount = parseFloat(rawAmount);
+            if (isNaN(amount) || amount <= 0) {
+                openDialog('Lỗi', 'Vui lòng nhập số tiền hợp lệ.');
+                return;
+            }
+            
             const type = document.querySelector('input[name="type"]:checked').value;
             const category = document.getElementById('catInput').value;
             const note = document.getElementById('noteInput').value.trim();
             const date = document.getElementById('dateInput').value;
+            
             state.transactions.push({ id: 't'+Date.now(), type, amount, category, note, date });
             saveState();
+            
+            // Reset form
+            document.getElementById('amountDisplayInput').value = '';
             document.getElementById('amountInput').value = '';
             document.getElementById('noteInput').value = '';
             openDialog('Đã lưu', '<p class="text-xs text-center">Ghi chép thành công.</p>');
@@ -532,5 +650,4 @@
     </script>
 </body>
 </html>
-
 
